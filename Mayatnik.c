@@ -9,7 +9,7 @@ double f(double omega,double korner)
 int main()
 {
     FILE* file;
-    file = fopen("out.txt","w");
+    file = fopen("Out.txt","w");
     double tau=2*pi/1000;
     double tau1=tau/2;
     int n,nbw=0,nlw=1,N=9*2*pi/tau+1;
