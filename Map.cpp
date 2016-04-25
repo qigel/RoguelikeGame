@@ -118,16 +118,22 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2)
 	}
 }
 
-bool Map::isWall(int x, int y) const {
+bool Map::isWall(int x, int y) const
+{
 	return !map->isWalkable(x, y);
 }
 
-bool Map::isExplored(int x, int y) const {
+bool Map::isExplored(int x, int y) const 
+{
 	return tiles[x + y*width].explored;
 }
 
-bool Map::isInFov(int x, int y) const
+bool Map::isInFov(int x, int y) const 
 {
+	if (x < 0 || x >= width || y < 0 || y >= height) 
+	{
+		return false;
+	}
 	if (map->isInFov(x, y)) 
 	{
 		tiles[x + y*width].explored = true;
@@ -136,10 +142,10 @@ bool Map::isInFov(int x, int y) const
 	return false;
 }
 
+
 void Map::computeFov()
 {
-	map->computeFov(engine.player->x, engine.player->y,
-		engine.fovRadius);
+	map->computeFov(engine.player->x, engine.player->y, engine.fovRadius);
 }
 
 void Map::render() const 
@@ -191,8 +197,8 @@ void Map::addMonster(int x, int y)
 	if (rng->getInt(0, 100) < 80)
 	{
 		// create an orc
-		Actor *orc = new Actor(x, y, 2, "orc");
-		orc->destructible = new MonsterDestructible(10, 0, "dead orc");
+		Actor *orc = new Actor(x, y, 2, "Злобный орк");
+		orc->destructible = new MonsterDestructible(10, 0, "Мертвый орк");
 		orc->attacker = new Attacker(3);
 		orc->ai = new MonsterAi();
 		engine.actors.push(orc);
@@ -200,8 +206,8 @@ void Map::addMonster(int x, int y)
 	else 
 	{
 		// create a troll
-		Actor *troll = new Actor(x, y, 258, "troll");
-		troll->destructible = new MonsterDestructible(16, 1, "troll carcass");
+		Actor *troll = new Actor(x, y, 258, "Толстый тролль");
+		troll->destructible = new MonsterDestructible(16, 1, "Останки тролля");
 		troll->attacker = new Attacker(4);
 		troll->ai = new MonsterAi();
 		engine.actors.push(troll);

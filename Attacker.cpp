@@ -9,14 +9,18 @@ void Attacker::attack(Actor *owner, Actor *target)
 	{
 		if (power - target->destructible->defense > 0) 
 		{
-			printf("%s attacks %s for %g hit points.\n", owner->name, target->name, power - target->destructible->defense);
+			engine.gui->message(owner == engine.player ? TCODColor::red : TCODColor::lightGrey,
+				"%s бьет %s и наносит %g урона.", owner->name, target->name,
+				power - target->destructible->defense);
 		}
-		else {
-			printf("%s attacks %s but it has no effect!\n", owner->name, target->name);
+		else
+		{
+			engine.gui->message(TCODColor::lightGrey, "%s бьет %s, но безрезультатно!", owner->name, target->name);
 		}
 		target->destructible->takeDamage(target, power);
 	}
-	else {
-		printf("%s attacks %s in vain.\n", owner->name, target->name);
+	else 
+	{
+		engine.gui->message(TCODColor::lightGrey, "%s бьет %s без успеха.", owner->name, target->name);
 	}
 }

@@ -3,8 +3,11 @@ class Engine
 public:
 	int screenWidth;
 	int screenHeight;
-	TCOD_key_t lastKey;
+	Gui *gui;
 	Engine(int screenWidth, int screenHeight);
+	TCOD_key_t lastKey;
+	TCOD_mouse_t mouse;
+	TCODList<Actor *> actors;
 	enum GameStatus
 	{
 		STARTUP,
@@ -13,7 +16,6 @@ public:
 		VICTORY,
 		DEFEAT
 	} gameStatus;
-	TCODList<Actor *> actors;
 	Actor *player;
 	Map *map;
 	int fovRadius;

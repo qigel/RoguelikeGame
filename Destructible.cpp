@@ -39,13 +39,13 @@ void MonsterDestructible::die(Actor *owner)
 {
 	// transform it into a nasty corpse! it doesn't block, can't be
 	// attacked and doesn't move
-	printf("%s is dead\n", owner->name);
+	engine.gui->message(TCODColor::lightGrey, "%s мертв", owner->name);
 	Destructible::die(owner);
 }
 
 void PlayerDestructible::die(Actor *owner)
 {
-	printf("You died!\n");
+	engine.gui->message(TCODColor::red, "Ты умер! Но мне понравилось, так что давай еще разок :D");
 	Destructible::die(owner);
 	engine.gameStatus = Engine::DEFEAT;
 }
