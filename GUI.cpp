@@ -2,7 +2,6 @@
 #include <stdarg.h>
 #include "main.hpp"
 
-static const int PANEL_HEIGHT = 7;
 static const int BAR_WIDTH = 20;
 static const int MSG_X = BAR_WIDTH + 2;
 static const int MSG_HEIGHT = PANEL_HEIGHT - 1;
@@ -12,15 +11,15 @@ Gui::Gui()
 	con = new TCODConsole(engine.screenWidth, PANEL_HEIGHT);
 }
 
-void Gui::render()
+void Gui::render(int cx, int cy)
 {
 	// clear the GUI console
 	con->setDefaultBackground(TCODColor::black);
 	con->clear();
 	// draw the health bar
-	renderBar(1, 1, BAR_WIDTH, "HP", engine.player->destructible->hp, engine.player->destructible->maxHp, TCODColor::lightRed, TCODColor::darkerRed);
+	renderBar(1, 1, BAR_WIDTH, "Çהמנמגüו", engine.player->destructible->hp, engine.player->destructible->maxHp, TCODColor::lightRed, TCODColor::darkerRed);
 	// mouse look
-	renderMouseLook();
+	renderMouseLook(cx, cy);
 	// draw the message log
 	int y = 1;
 	float colorCoef = 0.4f;
@@ -99,9 +98,9 @@ void Gui::message(const TCODColor &col, const char *text, ...)
 	} while (lineEnd);
 }
 
-void Gui::renderMouseLook()
+void Gui::renderMouseLook(int cx, int cy)
 {
-	if (!engine.map->isInFov(engine.mouse.cx, engine.mouse.cy)) 
+	if (!engine.map->isInFov(engine.mouse.cx + cx, engine.mouse.cy + cy))
 	{
 		// if mouse is out of fov, nothing to render
 		return;
@@ -112,8 +111,10 @@ void Gui::renderMouseLook()
 	{
 		Actor *actor = *it;
 		// find actors under the mouse cursor
-		if (actor->x == engine.mouse.cx && actor->y == engine.mouse.cy || actor->x + 1 == engine.mouse.cx && actor->y == engine.mouse.cy
-			|| actor->x == engine.mouse.cx && actor->y + 1 == engine.mouse.cy || actor->x + 1 == engine.mouse.cx && actor->y + 1 == engine.mouse.cy)
+		if (actor->x == engine.mouse.cx + cx && actor->y == engine.mouse.cy + cy ||
+			actor->x + 1 == engine.mouse.cx + cx && actor->y == engine.mouse.cy + cy ||
+			actor->x == engine.mouse.cx + cx && actor->y + 1 == engine.mouse.cy + cy ||
+			actor->x + 1 == engine.mouse.cx + cx && actor->y + 1 == engine.mouse.cy + cy)
 		{
 			if (!first)
 			{

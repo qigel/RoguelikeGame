@@ -1,9 +1,11 @@
+const int PANEL_HEIGHT = 7;
+
 class Gui
 {
 public:
 	Gui();
 	~Gui();
-	void render();
+	void render(int cx, int cy);
 	void message(const TCODColor &col, const char *text, ...);
 
 protected:
@@ -17,5 +19,5 @@ protected:
 	};
 	TCODList<Message *> log;
 	void renderBar(int x, int y, int width, const char *name, float value, float maxValue, const TCODColor &barColor, const TCODColor &backColor);
-	void renderMouseLook();
+	void renderMouseLook(int cx, int cy);//work uncorrectly :(
 };

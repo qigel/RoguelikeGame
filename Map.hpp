@@ -16,7 +16,8 @@ public:
 	bool isInFov(int x, int y) const;
 	bool isExplored(int x, int y) const;
 	void computeFov();
-	void render() const;
+	void render(int cx, int cy, int screenWidth, int screenHeight);
+	void addItem(int x, int y);
 protected:
 	Tile *tiles;
 	TCODMap *map;

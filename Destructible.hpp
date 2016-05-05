@@ -5,11 +5,12 @@ public:
 	float hp; // current health points
 	float defense; // hit points deflected
 	const char *corpseName; // the actor's name once dead/destroyed
-
+	float heal(float amount);
 	Destructible(float maxHp, float defense, const char *corpseName);
 	inline bool isDead() { return hp <= 0; };
 	float takeDamage(Actor *owner, float damage);
 	virtual void die(Actor *owner);
+	virtual ~Destructible() {};
 };
 
 class MonsterDestructible : public Destructible

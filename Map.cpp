@@ -3,6 +3,7 @@
 static const int ROOM_MAX_SIZE = 12;
 static const int ROOM_MIN_SIZE = 8;
 static const int MAX_ROOM_MONSTERS = 3;
+static const int MAX_ROOM_ITEMS = 2;
 
 class BspListener : public ITCODBspCallback
 {
@@ -46,12 +47,23 @@ public:
 
 Map::Map(int width, int height) : width(width), height(height)
 {
-	tiles = new Tile[width*height];
-	map = new TCODMap(width, height);
-	TCODBsp bsp(0, 0, width, height);
+	tiles = new Tile[(width+2)*(height+2)];
+	map = new TCODMap(width+2, height+2);
+	TCODBsp bsp(1, 1, width, height);
 	bsp.splitRecursive(NULL, 8, ROOM_MAX_SIZE, ROOM_MAX_SIZE, 1.5f, 1.5f);
 	BspListener listener(*this);
 	bsp.traverseInvertedLevelOrder(&listener, NULL);
+	for (int i = 0; i<width; i++)
+	{
+		map->setProperties(1, i, false, false);
+		map->setProperties(0, i, false, false);
+		map->setProperties(i, 1, false, false);
+		map->setProperties(i, 0, false, false);
+		map->setProperties(width - 1, i, false, false);
+		map->setProperties(width - 2, i, false, false);
+		map->setProperties(i, height - 2, false, false);
+		map->setProperties(i, height - 2, false, false);
+	}
 }
 
 Map::~Map()
@@ -115,6 +127,20 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2)
 			}
 			nbMonsters--;
 		}
+		// add items
+		int nbItems = rng->getInt(0, MAX_ROOM_ITEMS);
+		while (nbItems > 0) 
+		{
+			int x = rng->getInt(x1, x2);
+			int y = rng->getInt(y1, y2);
+			x -= x % 2;
+			y -= y % 2;
+			if (canWalk(x, y))
+			{
+				addItem(x, y);
+			}
+			nbItems--;
+		}
 	}
 }
 
@@ -148,24 +174,27 @@ void Map::computeFov()
 	map->computeFov(engine.player->x, engine.player->y, engine.fovRadius);
 }
 
-void Map::render() const 
+void Map::render(int cx, int cy, int screenWidth, int screenHeight)
 {
 	static const TCODColor darkWall(0, 0, 100);
 	static const TCODColor darkGround(50, 50, 150);
 	static const TCODColor lightWall(130, 110, 50);
 	static const TCODColor lightGround(200, 180, 50);
 
-	for (int x = 0; x < width; x++)
+	for (int x = cx; x < cx + screenWidth; x++)
 	{
-		for (int y = 0; y < height; y++)
+		for (int y = cy; y < cy + screenHeight - PANEL_HEIGHT; y++)
 		{
-			if (isInFov(x, y))
+			if (x >= 0 && x < width && y >= 0 && y < height)
 			{
-				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? lightWall : lightGround);
-			}
-			else if (isExplored(x, y))
-			{
-				TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? darkWall : darkGround);
+				if (isInFov(x, y))
+				{
+					TCODConsole::root->setCharBackground(x - cx, y - cy, isWall(x, y) ? lightWall : lightGround);
+				}
+				else if (isExplored(x, y))
+				{
+					TCODConsole::root->setCharBackground(x - cx, y - cy, isWall(x, y) ? darkWall : darkGround);
+				}
 			}
 		}
 	}
@@ -197,7 +226,7 @@ void Map::addMonster(int x, int y)
 	if (rng->getInt(0, 100) < 80)
 	{
 		// create an orc
-		Actor *orc = new Actor(x, y, 2, "Злобный орк");
+		Actor *orc = new Actor(x, y, 258, "Злобный орк");
 		orc->destructible = new MonsterDestructible(10, 0, "Мертвый орк");
 		orc->attacker = new Attacker(3);
 		orc->ai = new MonsterAi();
@@ -206,10 +235,18 @@ void Map::addMonster(int x, int y)
 	else 
 	{
 		// create a troll
-		Actor *troll = new Actor(x, y, 258, "Толстый тролль");
+		Actor *troll = new Actor(x, y, 260, "Толстый тролль");
 		troll->destructible = new MonsterDestructible(16, 1, "Останки тролля");
 		troll->attacker = new Attacker(4);
 		troll->ai = new MonsterAi();
 		engine.actors.push(troll);
 	}
+}
+
+void Map::addItem(int x, int y)
+{
+	Actor *healthPotion = new Actor(x, y, 262, "Зелье исцеления");
+	healthPotion->blocks = false;
+	healthPotion->pickable = new Healer(4);
+	engine.actors.push(healthPotion);
 }

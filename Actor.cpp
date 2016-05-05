@@ -1,6 +1,16 @@
 #include "main.hpp"
 
-Actor::Actor(int x, int y, int ch, const char *name) : x(x), y(y), ch(ch), name(name), blocks(true), attacker(NULL), destructible(NULL), ai(NULL) {}
+Actor::Actor(int x, int y, int ch, const char *name) : x(x), y(y), ch(ch), name(name), blocks(true), attacker(NULL), destructible(NULL), ai(NULL),
+pickable(NULL), container(NULL) {}
+
+Actor::~Actor() 
+{
+	if (attacker) delete attacker;
+	if (destructible) delete destructible;
+	if (ai) delete ai;
+	if (pickable) delete pickable;
+	if (container) delete container;
+}
 
 void putPic(int x, int y, int c)
 {
@@ -10,9 +20,9 @@ void putPic(int x, int y, int c)
 	TCODConsole::root->putChar(x + 1, y + 1, c + 17);
 }
 
-void Actor::render() const
+void Actor::render(int cx, int cy)
 {
-	putPic(x, y, ch);
+	putPic(x + cx, y + cy, ch);
 }
 
 void Actor::update() 
