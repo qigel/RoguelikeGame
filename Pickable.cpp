@@ -35,3 +35,22 @@ bool Healer::use(Actor *owner, Actor *wearer)
 	}
 	return false;
 }
+
+void Healer::load(TCODZip &zip) {
+	amount = zip.getFloat();
+}
+
+void Healer::save(TCODZip &zip) {
+	zip.putInt(HEALER);
+	zip.putFloat(amount);
+}
+
+Pickable *Pickable::create(TCODZip &zip) {
+	PickableType type = (PickableType)zip.getInt();
+	Pickable *pickable = NULL;
+	switch (type) {
+	case HEALER: pickable = new Healer(0); break;
+	}
+	pickable->load(zip);
+	return pickable;
+}

@@ -1,13 +1,14 @@
 void putPic(int x, int y, int c);
 
-class Actor 
+class Actor : public Persistent
 {
 public:
 	int x, y; // position on map
 	int ch; // ascii code
 	const char *name; // the actor's name
 	bool blocks; // can we walk on this actor?
-	Attacker *attacker; // something that deals damage
+	bool fovOnly; // only display when in fov
+	Attacker *attacker; // something that deals damages
 	Destructible *destructible; // something that can be damaged
 	Ai *ai; // something self-updating
 	Pickable *pickable; // something that can be picked and used
@@ -16,4 +17,7 @@ public:
 	~Actor();
 	void update();
 	void render(int cx, int cy);
+	float getDistance(int cx, int cy) const;
+	void load(TCODZip &zip);
+	void save(TCODZip &zip);
 };

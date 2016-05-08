@@ -2,6 +2,9 @@
 #include <math.h>
 #include "main.hpp"
 
+const int LEVEL_UP_BASE = 200;
+const int LEVEL_UP_FACTOR = 150;
+
 void TCODConsole::printFramenew(int x, int y, int w, int h, bool empty, TCOD_bkgnd_flag_t flag, const char *fmt) 
 {
 	TCODConsole::putChar(x, y, 0, flag); //up-left
@@ -36,10 +39,103 @@ void TCODConsole::printFramenew(int x, int y, int w, int h, bool empty, TCOD_bkg
 
 // how many turns the monster chases the player
 // after losing his sight
-static const int TRACKING_TURNS = 3;
+static const int TRACKING_TURNS = 5;
 
-void PlayerAi::update(Actor *owner)
+MonsterAi::MonsterAi() : moveCount(0) {}
+
+void MonsterAi::update(Actor *owner)
 {
+	if (owner->destructible && owner->destructible->isDead())
+	{
+		return;
+	}
+	if (engine.map->isInFov(owner->x, owner->y))
+	{
+		// we can see the player. move towards him
+		moveCount = TRACKING_TURNS;
+	}
+	else {
+		moveCount--;
+	}
+	if (moveCount > 0)
+	{
+		moveOrAttack(owner, engine.player->x, engine.player->y);
+	}
+}
+
+void MonsterAi::moveOrAttack(Actor *owner, int targetx, int targety)
+{
+	int dx = targetx - owner->x;
+	int dy = targety - owner->y;
+	float distance = sqrtf(dx*dx + dy*dy);
+	if (distance > 2)
+	{
+		dx = 2 * (int)(round(dx / distance));
+		dy = 2 * (int)(round(dy / distance));
+		if (abs(dx) > abs(dy))
+		{
+			if (engine.map->canWalk(owner->x + dx, owner->y))
+			{
+				owner->x += dx;
+			}
+			else if (engine.map->canWalk(owner->x, owner->y + dy))
+			{
+				owner->y += dy;
+			}
+		}
+		else
+		{
+			if (engine.map->canWalk(owner->x, owner->y + dy))
+			{
+				owner->y += dy;
+			}
+			else if (engine.map->canWalk(owner->x + dx, owner->y))
+			{
+				owner->x += dx;
+			}
+		}
+	}
+	else if (owner->attacker)
+	{
+		owner->attacker->attack(owner, engine.player);
+	}
+}
+
+PlayerAi::PlayerAi() : xpLevel(1) {}
+
+int PlayerAi::getNextLevelXp() 
+{
+	return LEVEL_UP_BASE + xpLevel*LEVEL_UP_FACTOR;
+}
+
+void PlayerAi::update(Actor *owner) 
+{
+	int levelUpXp = getNextLevelXp();
+	if (owner->destructible->xp >= levelUpXp)
+	{
+		xpLevel++;
+		owner->destructible->xp -= levelUpXp;
+		engine.gui->message(TCODColor::yellow, "Ваши боевые навыки улучшились!\nВы достигли %d уровня", xpLevel);
+		engine.gui->menu.clear();
+		engine.gui->menu.addItem(Menu::CONSTITUTION, "Телосложение (+20 Ед.зд)");
+		engine.gui->menu.addItem(Menu::STRENGTH, "Сила (+1 урон)");
+		engine.gui->menu.addItem(Menu::AGILITY, "Agility (+1 защита)");
+		Menu::MenuItemCode menuItem = engine.gui->menu.pick(Menu::PAUSE);
+		switch (menuItem)
+		{
+		case Menu::CONSTITUTION:
+			owner->destructible->maxHp += 20;
+			owner->destructible->hp += 20;
+			break;
+		case Menu::STRENGTH:
+			owner->attacker->power += 1;
+			break;
+		case Menu::AGILITY:
+			owner->destructible->defense += 1;
+			break;
+		default:break;
+		}
+	}
 	if (owner->destructible && owner->destructible->isDead()) 
 	{
 		return;
@@ -93,66 +189,6 @@ bool PlayerAi::moveOrAttack(Actor *owner, int targetx, int targety)
 	return true;
 }
 
-MonsterAi::MonsterAi() : moveCount(0) {}
-
-void MonsterAi::update(Actor *owner)
-{
-	if (owner->destructible && owner->destructible->isDead()) 
-	{
-		return;
-	}
-	if (engine.map->isInFov(owner->x, owner->y)) 
-	{
-		// we can see the player. move towards him
-		moveCount = TRACKING_TURNS;
-	}
-	else {
-		moveCount--;
-	}
-	if (moveCount > 0) 
-	{
-		moveOrAttack(owner, engine.player->x, engine.player->y);
-	}
-}
-
-void MonsterAi::moveOrAttack(Actor *owner, int targetx, int targety) 
-{
-	int dx = targetx - owner->x;
-	int dy = targety - owner->y;
-	float distance = sqrtf(dx*dx + dy*dy);
-	if (distance > 2)
-	{
-		dx = 2*(int)(round(dx / distance));
-		dy = 2*(int)(round(dy / distance));
-		if (abs(dx) > abs(dy))
-		{
-			if (engine.map->canWalk(owner->x + dx, owner->y))
-			{
-				owner->x += dx;
-			}
-			else if (engine.map->canWalk(owner->x, owner->y + dy))
-			{
-				owner->y += dy;
-			}
-		}
-		else 
-		{
-			if (engine.map->canWalk(owner->x, owner->y + dy))
-			{
-				owner->y += dy;
-			}
-			else if (engine.map->canWalk(owner->x + dx, owner->y))
-			{
-				owner->x += dx;
-			}
-		}
-	}
-	else if (owner->attacker)
-	{
-		owner->attacker->attack(owner, engine.player);
-	}
-}
-
 void PlayerAi::handleActionKey(Actor *owner, int ascii)
 {
 	switch (ascii)
@@ -197,6 +233,16 @@ void PlayerAi::handleActionKey(Actor *owner, int ascii)
 		}
 	}
 	break;
+	case 'e':
+		if (engine.stairs->x == owner->x && engine.stairs->y == owner->y)
+		{
+			engine.nextLevel();
+		}
+		else 
+		{
+			engine.gui->message(TCODColor::lightGrey, "Здесь нет лестницы");
+		}
+		break;
 	default: break;
 	}
 }
@@ -236,4 +282,31 @@ Actor *PlayerAi::choseFromInventory(Actor *owner)
 		}
 	}
 	return NULL;
+}
+
+void MonsterAi::load(TCODZip &zip) {
+	moveCount = zip.getInt();
+}
+
+void MonsterAi::save(TCODZip &zip) {
+	zip.putInt(MONSTER);
+	zip.putInt(moveCount);
+}
+
+void PlayerAi::load(TCODZip &zip) {
+}
+
+void PlayerAi::save(TCODZip &zip) {
+	zip.putInt(PLAYER);
+}
+
+Ai *Ai::create(TCODZip &zip) {
+	AiType type = (AiType)zip.getInt();
+	Ai *ai = NULL;
+	switch (type) {
+	case PLAYER: ai = new PlayerAi(); break;
+	case MONSTER: ai = new MonsterAi(); break;
+	}
+	ai->load(zip);
+	return ai;
 }

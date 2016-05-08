@@ -18,17 +18,17 @@ public:
 		if (node->isLeaf())
 		{
 			int x, y, w, h;
+			bool withActors = (bool)userData;
 			// dig a room
-			TCODRandom *rng = TCODRandom::getInstance();
-			w = rng->getInt(ROOM_MIN_SIZE, node->w - 2);
+			w = map.rng->getInt(ROOM_MIN_SIZE, node->w - 2);
 			w -= w % 2;
-			h = rng->getInt(ROOM_MIN_SIZE, node->h - 2);
+			h = map.rng->getInt(ROOM_MIN_SIZE, node->h - 2);
 			h -= h % 2;
-			x = rng->getInt(node->x + 2, node->x + node->w - w - 2);
+			x = map.rng->getInt(node->x + 2, node->x + node->w - w - 1);
 			x -= x % 2;
-			y = rng->getInt(node->y + 2, node->y + node->h - h - 2);
+			y = map.rng->getInt(node->y + 2, node->y + node->h - h - 1);
 			y -= y % 2;
-			map.createRoom(roomNum == 0, x, y, x + w - 2, y + h - 2);
+			map.createRoom(roomNum == 0, x, y, x + w - 2, y + h - 2, withActors);
 			if (roomNum != 0)
 			{
 				// dig a corridor from last room
@@ -45,14 +45,20 @@ public:
 	}
 };
 
-Map::Map(int width, int height) : width(width), height(height)
+Map::Map(int width, int height)	: width(width), height(height) 
 {
-	tiles = new Tile[(width+2)*(height+2)];
-	map = new TCODMap(width+2, height+2);
+	seed = TCODRandom::getInstance()->getInt(0, 0x7FFFFFFF);
+}
+
+void Map::init(bool withActors) 
+{
+		rng = new TCODRandom(seed, TCOD_RNG_CMWC);
+	tiles = new Tile[(width + 2)*(height + 2)];
+	map = new TCODMap(width + 2, height + 2);
 	TCODBsp bsp(1, 1, width, height);
-	bsp.splitRecursive(NULL, 8, ROOM_MAX_SIZE, ROOM_MAX_SIZE, 1.5f, 1.5f);
+	bsp.splitRecursive(rng, 8, ROOM_MAX_SIZE, ROOM_MAX_SIZE, 1.5f, 1.5f);
 	BspListener listener(*this);
-	bsp.traverseInvertedLevelOrder(&listener, NULL);
+	bsp.traverseInvertedLevelOrder(&listener, (void *)withActors);
 	for (int i = 0; i<width; i++)
 	{
 		map->setProperties(1, i, false, false);
@@ -98,13 +104,17 @@ void Map::dig(int x1, int y1, int x2, int y2)
 	}
 }
 
-void Map::createRoom(bool first, int x1, int y1, int x2, int y2) 
+void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors) 
 {
 	x1 -= x1 % 2;
 	x2 -= x2 % 2;
 	y1 -= y1 % 2 + 1;
 	y2 -= y2 % 2 + 1;
 	dig(x1, y1, x2, y2);
+	if (!withActors)
+	{
+		return;
+	}
 	if (first) 
 	{
 		// put the player in the first room
@@ -114,6 +124,21 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2)
 	else
 	{
 		TCODRandom *rng = TCODRandom::getInstance();
+		// add items
+		int nbItems = rng->getInt(0, MAX_ROOM_ITEMS);
+		while (nbItems > 0)
+		{
+			int x = rng->getInt(x1, x2);
+			int y = rng->getInt(y1, y2);
+			x -= x % 2;
+			y -= y % 2;
+			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1))
+			{
+				addItem(x, y);
+			}
+			nbItems--;
+		}
+		//add monsters
 		int nbMonsters = rng->getInt(0, MAX_ROOM_MONSTERS);
 		while (nbMonsters > 0) 
 		{
@@ -127,21 +152,10 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2)
 			}
 			nbMonsters--;
 		}
-		// add items
-		int nbItems = rng->getInt(0, MAX_ROOM_ITEMS);
-		while (nbItems > 0) 
-		{
-			int x = rng->getInt(x1, x2);
-			int y = rng->getInt(y1, y2);
-			x -= x % 2;
-			y -= y % 2;
-			if (canWalk(x, y))
-			{
-				addItem(x, y);
-			}
-			nbItems--;
-		}
 	}
+	// set stairs position
+	engine.stairs->x = (x1 + x2) / 2 - (x1 + x2) / 2 % 2;
+	engine.stairs->y = (y1 + y2) / 2 - (y1 + y2) / 2 % 2;
 }
 
 bool Map::isWall(int x, int y) const
@@ -226,8 +240,8 @@ void Map::addMonster(int x, int y)
 	if (rng->getInt(0, 100) < 80)
 	{
 		// create an orc
-		Actor *orc = new Actor(x, y, 258, "Злобный орк");
-		orc->destructible = new MonsterDestructible(10, 0, "Мертвый орк");
+		Actor *orc = new Actor(x, y, 3858, "Злобный орк");
+		orc->destructible = new MonsterDestructible(10, 0, "Мертвый орк", 15);
 		orc->attacker = new Attacker(3);
 		orc->ai = new MonsterAi();
 		engine.actors.push(orc);
@@ -235,8 +249,8 @@ void Map::addMonster(int x, int y)
 	else 
 	{
 		// create a troll
-		Actor *troll = new Actor(x, y, 260, "Толстый тролль");
-		troll->destructible = new MonsterDestructible(16, 1, "Останки тролля");
+		Actor *troll = new Actor(x, y, 3866, "Толстый тролль");
+		troll->destructible = new MonsterDestructible(16, 1, "Останки тролля", 25);
 		troll->attacker = new Attacker(4);
 		troll->ai = new MonsterAi();
 		engine.actors.push(troll);
@@ -245,8 +259,23 @@ void Map::addMonster(int x, int y)
 
 void Map::addItem(int x, int y)
 {
-	Actor *healthPotion = new Actor(x, y, 262, "Зелье исцеления");
+	Actor *healthPotion = new Actor(x, y, 3862, "Зелье исцеления");
 	healthPotion->blocks = false;
 	healthPotion->pickable = new Healer(4);
 	engine.actors.push(healthPotion);
+}
+
+void Map::save(TCODZip &zip) {
+	zip.putInt(seed);
+	for (int i = 0; i < width*height; i++) {
+		zip.putInt(tiles[i].explored);
+	}
+}
+
+void Map::load(TCODZip &zip) {
+	seed = zip.getInt();
+	init(false);
+	for (int i = 0; i < width*height; i++) {
+		tiles[i].explored = zip.getInt();
+	}
 }
