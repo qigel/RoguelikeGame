@@ -1,7 +1,16 @@
 #include <stdio.h>
 #include "main.hpp"
 
-Destructible::Destructible(float maxHp, float defense, const char *corpseName) : maxHp(maxHp), hp(maxHp), defense(defense), corpseName(corpseName) {}
+Destructible::Destructible(float maxHp, float defense, const char *corpseName, int xp) : maxHp(maxHp), hp(maxHp), defense(defense),
+corpseName(corpseName), xp(xp)
+{
+	//this->corpseName = _strdup(corpseName);
+}
+
+/*Destructible::~Destructible()
+{
+	free(corpseName);
+}*/
 
 float Destructible::takeDamage(Actor *owner, float damage)
 {
@@ -21,32 +30,80 @@ float Destructible::takeDamage(Actor *owner, float damage)
 	return damage;
 }
 
+float Destructible::heal(float amount)
+{
+	hp += amount;
+	if (hp > maxHp)
+	{
+		amount -= hp - maxHp;
+		hp = maxHp;
+	}
+	return amount;
+}
+
 void Destructible::die(Actor *owner) 
 {
 	// transform the actor into a corpse!
-	owner->ch = 8;
+	owner->ch = 3868;
 	owner->name = corpseName;
 	owner->blocks = false;
 	// make sure corpses are drawn before living actors
 	engine.sendToBack(owner);
 }
 
-MonsterDestructible::MonsterDestructible(float maxHp, float defense, const char *corpseName) : Destructible(maxHp, defense, corpseName) {}
+MonsterDestructible::MonsterDestructible(float maxHp, float defense, const char *corpseName, int xp) :	Destructible(maxHp, defense, corpseName, xp) {}
 
-PlayerDestructible::PlayerDestructible(float maxHp, float defense, const char *corpseName) : Destructible(maxHp, defense, corpseName) {}
+PlayerDestructible::PlayerDestructible(float maxHp, float defense, const char *corpseName) : Destructible(maxHp, defense, corpseName, xp) {}
 
 void MonsterDestructible::die(Actor *owner)
 {
 	// transform it into a nasty corpse! it doesn't block, can't be
 	// attacked and doesn't move
-	engine.gui->message(TCODColor::lightGrey, "%s мертв", owner->name);
+	engine.gui->message(TCODColor::lightGrey, "%s мертв. Вы получаете %d опыта", owner->name, xp);
+	engine.player->destructible->xp += xp;
 	Destructible::die(owner);
 }
 
 void PlayerDestructible::die(Actor *owner)
 {
-	engine.gui->message(TCODColor::red, "Ты умер! Но мне понравилось, так что давай еще разок :D");
+	engine.gui->message(TCODColor::red, "Вы погибли, так и не достигнув своей цели...");
 	Destructible::die(owner);
 	engine.gameStatus = Engine::DEFEAT;
 }
 
+void Destructible::load(TCODZip &zip) {
+	maxHp = zip.getFloat();
+	hp = zip.getFloat();
+	defense = zip.getFloat();
+	corpseName = _strdup(zip.getString());
+}
+
+void Destructible::save(TCODZip &zip) {
+	zip.putFloat(maxHp);
+	zip.putFloat(hp);
+	zip.putFloat(defense);
+	zip.putString(corpseName);
+}
+
+void PlayerDestructible::save(TCODZip &zip) {
+	zip.putInt(PLAYER);
+	Destructible::save(zip);
+}
+
+void MonsterDestructible::save(TCODZip &zip) {
+	zip.putInt(MONSTER);
+	Destructible::save(zip);
+}
+
+Destructible *Destructible::create(TCODZip &zip)
+{
+	DestructibleType type = (DestructibleType)zip.getInt();
+	Destructible *destructible = NULL;
+	switch (type) 
+	{
+		case MONSTER: destructible = new MonsterDestructible(0, 0, NULL, 0); break;
+		case PLAYER: destructible = new PlayerDestructible(0, 0, NULL); break;
+	}
+	destructible->load(zip);
+	return destructible;
+}

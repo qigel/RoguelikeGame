@@ -24,3 +24,11 @@ void Attacker::attack(Actor *owner, Actor *target)
 		engine.gui->message(TCODColor::lightGrey, "%s бьет %s без успеха.", owner->name, target->name);
 	}
 }
+
+void Attacker::load(TCODZip &zip) {
+	power = zip.getFloat();
+}
+
+void Attacker::save(TCODZip &zip) {
+	zip.putFloat(power);
+}

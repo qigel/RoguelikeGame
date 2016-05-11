@@ -2,7 +2,6 @@
 #include <stdarg.h>
 #include "main.hpp"
 
-static const int PANEL_HEIGHT = 7;
 static const int BAR_WIDTH = 20;
 static const int MSG_X = BAR_WIDTH + 2;
 static const int MSG_HEIGHT = PANEL_HEIGHT - 1;
@@ -12,15 +11,20 @@ Gui::Gui()
 	con = new TCODConsole(engine.screenWidth, PANEL_HEIGHT);
 }
 
-void Gui::render()
+void Gui::render(int cx, int cy)
 {
 	// clear the GUI console
 	con->setDefaultBackground(TCODColor::black);
 	con->clear();
 	// draw the health bar
-	renderBar(1, 1, BAR_WIDTH, "HP", engine.player->destructible->hp, engine.player->destructible->maxHp, TCODColor::lightRed, TCODColor::darkerRed);
+	renderBar(1, 1, BAR_WIDTH, "Здоровье", engine.player->destructible->hp, engine.player->destructible->maxHp, TCODColor::lightRed, TCODColor::darkerRed);
+	// draw the XP bar
+	PlayerAi *ai = (PlayerAi *)engine.player->ai;
+	char xpTxt[128];
+	sprintf(xpTxt, "Опыт(%d)", ai->xpLevel);
+	renderBar(1, 5, BAR_WIDTH, xpTxt, engine.player->destructible->xp, ai->getNextLevelXp(), TCODColor::lightViolet, TCODColor::darkerViolet);
 	// mouse look
-	renderMouseLook();
+	renderMouseLook(cx, cy);
 	// draw the message log
 	int y = 1;
 	float colorCoef = 0.4f;
@@ -35,6 +39,9 @@ void Gui::render()
 			colorCoef += 0.3f;
 		}
 	}
+	// dungeon level
+	con->setDefaultForeground(TCODColor::white);
+	con->print(1, 3, "Ур. подземелья %d", engine.level);
 	// blit the GUI console on the root console
 	TCODConsole::blit(con, 0, 0, engine.screenWidth, PANEL_HEIGHT, TCODConsole::root, 0, engine.screenHeight - PANEL_HEIGHT);
 }
@@ -59,6 +66,11 @@ void Gui::renderBar(int x, int y, int width, const char *name,	float value, floa
 Gui::~Gui() 
 {
 	delete con;
+	clear();
+}
+
+void Gui::clear() 
+{
 	log.clearAndDelete();
 }
 
@@ -88,7 +100,8 @@ void Gui::message(const TCODColor &col, const char *text, ...)
 		}
 		// detect end of the line
 		lineEnd = strchr(lineBegin, '\n');
-		if (lineEnd) {
+		if (lineEnd)
+		{
 			*lineEnd = '\0';
 		}
 		// add a new message to the log
@@ -99,9 +112,9 @@ void Gui::message(const TCODColor &col, const char *text, ...)
 	} while (lineEnd);
 }
 
-void Gui::renderMouseLook()
+void Gui::renderMouseLook(int cx, int cy)
 {
-	if (!engine.map->isInFov(engine.mouse.cx, engine.mouse.cy)) 
+	if (!engine.map->isInFov(engine.mouse.cx + cx, engine.mouse.cy + cy))
 	{
 		// if mouse is out of fov, nothing to render
 		return;
@@ -112,8 +125,10 @@ void Gui::renderMouseLook()
 	{
 		Actor *actor = *it;
 		// find actors under the mouse cursor
-		if (actor->x == engine.mouse.cx && actor->y == engine.mouse.cy || actor->x + 1 == engine.mouse.cx && actor->y == engine.mouse.cy
-			|| actor->x == engine.mouse.cx && actor->y + 1 == engine.mouse.cy || actor->x + 1 == engine.mouse.cx && actor->y + 1 == engine.mouse.cy)
+		if (actor->x == engine.mouse.cx + cx && actor->y == engine.mouse.cy + cy ||
+			actor->x + 1 == engine.mouse.cx + cx && actor->y == engine.mouse.cy + cy ||
+			actor->x == engine.mouse.cx + cx && actor->y + 1 == engine.mouse.cy + cy ||
+			actor->x + 1 == engine.mouse.cx + cx && actor->y + 1 == engine.mouse.cy + cy)
 		{
 			if (!first)
 			{
@@ -129,4 +144,112 @@ void Gui::renderMouseLook()
 	// display the list of actors under the mouse cursor
 	con->setDefaultForeground(TCODColor::lightGrey);
 	con->print(1, 0, buf);
+}
+
+void Gui::save(TCODZip &zip) {
+	zip.putInt(log.size());
+	for (Message **it = log.begin(); it != log.end(); it++) {
+		zip.putString((*it)->text);
+		zip.putColor(&(*it)->col);
+	}
+}
+
+void Gui::load(TCODZip &zip) {
+	int nbMessages = zip.getInt();
+	while (nbMessages > 0) {
+		const char *text = zip.getString();
+		TCODColor col = zip.getColor();
+		message(col, text);
+		nbMessages--;
+	}
+}
+
+Menu::~Menu()
+{
+	clear();
+}
+
+void Menu::clear()
+{
+	items.clearAndDelete();
+}
+
+void Menu::addItem(MenuItemCode code, const char *label)
+{
+	MenuItem *item = new MenuItem();
+	item->code = code;
+	item->label = label;
+	items.push(item);
+}
+
+void Menu::putBigPic()
+{
+	for (int x = 60; x < 80; x++)
+		for (int y = 0; y < 40; y++)
+			TCODConsole::root->setCharBackground(x, y, TCOD_black);
+	for (int k = 0; k < 5; k++)
+		for (int j = 0; j < 45; j++)
+			for (int i = 0; i < 16; i++)
+				TCODConsole::root->putChar(i+16*k, j, 256+i+j*16+720*k);
+}
+
+const int PAUSE_MENU_WIDTH = 30;
+const int PAUSE_MENU_HEIGHT = 15;
+Menu::MenuItemCode Menu::pick(DisplayMode mode)
+{
+	int selectedItem = 0;
+	int menux, menuy;
+	if (mode == PAUSE)
+	{
+		menux = engine.screenWidth / 2 - PAUSE_MENU_WIDTH / 2;
+		menuy = engine.screenHeight / 2 - PAUSE_MENU_HEIGHT / 2;
+		TCODConsole::root->setDefaultForeground(TCODColor(200, 180, 50));
+		TCODConsole::root->printFrame(menux, menuy, PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT, true, TCOD_BKGND_ALPHA(70), "Меню");
+		menux += 2;
+		menuy += 3;
+	}
+	else
+	{
+		putBigPic();
+		menux = 65;
+		menuy = TCODConsole::root->getHeight() / 3;
+	}
+	while (!TCODConsole::isWindowClosed())
+	{
+		int currentItem = 0;
+		for (MenuItem **it = items.begin(); it != items.end(); it++)
+		{
+			if (currentItem == selectedItem) 
+			{
+				TCODConsole::root->setDefaultForeground(TCODColor::lighterOrange);
+			}
+			else {
+				TCODConsole::root->setDefaultForeground(TCODColor::lightGrey);
+			}
+			TCODConsole::root->print(menux, menuy + currentItem * 3, (*it)->label);
+			currentItem++;
+		}
+		TCODConsole::root->setDefaultForeground(TCODColor::white);
+		TCODConsole::flush();
+		// check key presses
+		TCOD_key_t key;
+		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS, &key, NULL);
+		switch (key.vk)
+		{
+		case TCODK_UP:
+			selectedItem--;
+			if (selectedItem < 0) 
+			{
+				selectedItem = items.size() - 1;
+			}
+			break;
+		case TCODK_DOWN:
+			selectedItem = (selectedItem + 1) % items.size();
+			break;
+		case TCODK_ENTER:
+			return items.get(selectedItem)->code;
+		default: break;
+		}
+	}
+	return NONE;
 }
