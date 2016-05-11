@@ -132,7 +132,7 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors
 			int y = rng->getInt(y1, y2);
 			x -= x % 2;
 			y -= y % 2;
-			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1) && x < width - 1)
+			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1) && x < width - 2)
 			{
 				addItem(x, y);
 			}
@@ -146,7 +146,7 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors
 			int y = rng->getInt(y1, y2);
 			x -= x % 2;
 			y -= y % 2;
-			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1) && x < width - 1)
+			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1) && x < width - 2)
 			{
 				addMonster(x, y);
 			}
