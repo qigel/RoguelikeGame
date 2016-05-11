@@ -132,7 +132,7 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors
 			int y = rng->getInt(y1, y2);
 			x -= x % 2;
 			y -= y % 2;
-			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1))
+			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1) && x < width - 1)
 			{
 				addItem(x, y);
 			}
@@ -146,7 +146,7 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors
 			int y = rng->getInt(y1, y2);
 			x -= x % 2;
 			y -= y % 2;
-			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1))
+			if (canWalk(x, y) && canWalk(x + 1, y - 1) && canWalk(x + 1, y) && canWalk(x, y - 1) && x < width - 1)
 			{
 				addMonster(x, y);
 			}
@@ -240,8 +240,8 @@ void Map::addMonster(int x, int y)
 	if (rng->getInt(0, 100) < 80)
 	{
 		// create an orc
-		Actor *orc = new Actor(x, y, 3858, "Çëîáíûé îðê");
-		orc->destructible = new MonsterDestructible(10, 0, "Ìåðòâûé îðê", 15);
+		Actor *orc = new Actor(x, y, 3858, "Ã‡Ã«Ã®Ã¡Ã­Ã»Ã© Ã®Ã°Ãª");
+		orc->destructible = new MonsterDestructible(10, 0, "ÃŒÃ¥Ã°Ã²Ã¢Ã»Ã© Ã®Ã°Ãª", 15);
 		orc->attacker = new Attacker(3);
 		orc->ai = new MonsterAi();
 		engine.actors.push(orc);
@@ -249,8 +249,8 @@ void Map::addMonster(int x, int y)
 	else 
 	{
 		// create a troll
-		Actor *troll = new Actor(x, y, 3866, "Òîëñòûé òðîëëü");
-		troll->destructible = new MonsterDestructible(16, 1, "Îñòàíêè òðîëëÿ", 25);
+		Actor *troll = new Actor(x, y, 3866, "Ã’Ã®Ã«Ã±Ã²Ã»Ã© Ã²Ã°Ã®Ã«Ã«Ã¼");
+		troll->destructible = new MonsterDestructible(16, 1, "ÃŽÃ±Ã²Ã Ã­ÃªÃ¨ Ã²Ã°Ã®Ã«Ã«Ã¿", 25);
 		troll->attacker = new Attacker(4);
 		troll->ai = new MonsterAi();
 		engine.actors.push(troll);
@@ -259,7 +259,7 @@ void Map::addMonster(int x, int y)
 
 void Map::addItem(int x, int y)
 {
-	Actor *healthPotion = new Actor(x, y, 3862, "Çåëüå èñöåëåíèÿ");
+	Actor *healthPotion = new Actor(x, y, 3862, "Ã‡Ã¥Ã«Ã¼Ã¥ Ã¨Ã±Ã¶Ã¥Ã«Ã¥Ã­Ã¨Ã¿");
 	healthPotion->blocks = false;
 	healthPotion->pickable = new Healer(4);
 	engine.actors.push(healthPotion);
