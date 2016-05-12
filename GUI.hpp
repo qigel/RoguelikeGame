@@ -8,10 +8,12 @@ public:
 		NONE,
 		NEW_GAME,
 		CONTINUE,
+		OPTIONS,
 		EXIT,
 		CONSTITUTION,
 		STRENGTH,
-		AGILITY
+		AGILITY,
+		INTELLIGENCE
 	};
 	enum DisplayMode
 	{

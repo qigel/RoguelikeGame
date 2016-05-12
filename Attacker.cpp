@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "main.hpp"
 
-Attacker::Attacker(float power) : power(power){}
+Attacker::Attacker(float power, float intell) : power(power), intell(intell){}
 
 void Attacker::attack(Actor *owner, Actor *target) 
 {
@@ -23,12 +23,4 @@ void Attacker::attack(Actor *owner, Actor *target)
 	{
 		engine.gui->message(TCODColor::lightGrey, "%s бьет %s без успеха.", owner->name, target->name);
 	}
-}
-
-void Attacker::load(TCODZip &zip) {
-	power = zip.getFloat();
-}
-
-void Attacker::save(TCODZip &zip) {
-	zip.putFloat(power);
 }
